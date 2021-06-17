@@ -73,7 +73,7 @@ esac
     wget -q --show-progress \
         ${BASEURL}/prod/streams/${STREAMS}/builds/${VERSION}/x86_64/fedora-coreos-${VERSION}-${PLATEFORM}.x86_64.qcow2.xz
     xz -dv fedora-coreos-${VERSION}-${PLATEFORM}.x86_64.qcow2.xz
-    qemu-img convert -f qcow2 -O raw fedora-coreos-${VERSION}-${PLATEFORM}.x86_64.qcow2 fedora-coreos-${VERSION}-${PLATEFORM}.x86_64.img
+    qemu-img convert -f qcow2 -O raw fedora-coreos-${VERSION}-${PLATEFORM}.x86_64.qcow2 fedora-coreos-${VERSION}-${PLATEFORM}.x86_64.raw
 }
 
 # create a new VM
@@ -107,13 +107,13 @@ qm set ${TEMPLATE_VMID} --ide2 ${TEMPLATE_VMSTORAGE}:cloudinit
 # import fedora disk
 if [[ "x${TEMPLATE_VMSTORAGE_type}" = "xfile" ]]
 then
-	vmdisk_name="${TEMPLATE_VMID}/vm-${TEMPLATE_VMID}-disk-0.img"
-	vmdisk_format="--format img"
+	vmdisk_name="${TEMPLATE_VMID}/vm-${TEMPLATE_VMID}-disk-0.raw"
+	vmdisk_format="--format raw"
 else
 	vmdisk_name="vm-${TEMPLATE_VMID}-disk-0"
         vmdisk_format=""
 fi
-qm importdisk ${TEMPLATE_VMID} fedora-coreos-${VERSION}-${PLATEFORM}.x86_64.img ${TEMPLATE_VMSTORAGE} ${vmdisk_format}
+qm importdisk ${TEMPLATE_VMID} fedora-coreos-${VERSION}-${PLATEFORM}.x86_64.raw ${TEMPLATE_VMSTORAGE} ${vmdisk_format}
 qm set ${TEMPLATE_VMID} --scsihw virtio-scsi-pci --virtio0 ${TEMPLATE_VMSTORAGE}:${vmdisk_name}${VMDISK_OPTIONS}
 
 # set hook-script
