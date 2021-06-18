@@ -250,11 +250,11 @@
       contents:
         inline: |
           max_map_count=262144
-    - path: /etc/sysctl.d/50-max-map-count.conf
+    - path: /etc/sysctl.d/50-hardening.conf
       mode: 0644      
       contents:
         inline: |
-          #Increasing the max map 
+          #sysctl security hardening 
           fs.protected_fifos = 2
           dev.tty.ldisc_autoload = 0
           fs.protected_hardlinks = 1
@@ -315,7 +315,6 @@
           net.netfilter.nf_conntrack_max = 2000000
           net.netfilter.nf_conntrack_tcp_loose = 0
           net.ipv6.conf.ens18.accept_ra_rtr_pref = 0
-          fs.file-max = 2097152
 
 # cloudinit: apply cloudinit settings on boot
     - name: cloudinit.service
