@@ -1,44 +1,10 @@
-# motd script
-    - path: /usr/local/bin/geco-motd
-      mode: 0755
-      contents:
-        inline: |
-          #!/bin/bash
-          
-          OUT=/etc/console-login-helper-messages/issue.d/22_motd.motd
-          
-          echo -e "\nWelcome on a server powered by\n" > ${OUT}
-          echo -e '\e[33m    ______                      _ ______' >> ${OUT}
-          echo -e '\e[33m   / ____/__  _________        (_)_  __/' >> ${OUT}
-          echo -e '\e[33m  / / __/ _ \/ ___/ __ \  __   / / / /' >> ${OUT}
-          echo -e '\e[33m / /_/ /  __/ /__/ /_/ / |__| / / / /' >> ${OUT}
-          echo -e '\e[33m \____/\___/\___/\____/      /_/ /_/\n\n' >> ${OUT}
-          eval "$(grep -E "^(NAME=|VARIANT=)" /etc/os-release)" && echo -e "\e[33mOperating System:\e[0m ${NAME} ${VARIANT}" >> ${OUT}
-          eval "$(grep ^OSTREE_VERSION /etc/os-release)" && echo -e "\e[33mVersion:\e[0m ${OSTREE_VERSION}" >> ${OUT}
-          echo -e "\e[33mKernel:\e[0m $(uname -r)" >> ${OUT}
-          echo -ne "\e[33mCPU:\e[0m $(grep ^processor /proc/cpuinfo | wc -l)" >> ${OUT}
-          echo "$(grep "^model name" /proc/cpuinfo | head -n1 | awk -F: '{print $2}' | awk -F@ '{print $1}')" >> ${OUT}
-          echo -e "\e[33mRAM:\e[0m $(free | grep Mem | awk '{print $2}' | xargs -i expr {} / 1000 / 1000 | xargs -i printf '%.0fG\n' {})" >> ${OUT}
-          i=0; for disk in $(ls /dev/sd[a-z] /dev/vd[a-z] 2>/dev/null); do
-                lsblk > /dev/null 2>&1 || break
-                echo -e "\e[33mHDD${i} ($(basename ${disk})):\e[0m$(lsblk -n --nodeps ${disk} -o size)" >> ${OUT}
-                i=$((i+1))
-          done
-          echo -e "\n\e[33mHostname:\e[0m "$(hostname -f) >> ${OUT}  
-          sleep 1; echo -e "\e[33mIPv4 Address:\e[0m $(ip route get 8.8.8.8 | awk 'NR==1 {print $7}')" >> ${OUT}
-          echo -e "\e[33mPublic IPv4 Address:\e[0m $(curl https://ipv4.icanhazip.com)\n" >> ${OUT}
-
 # apply cloudinit script
-    - path: /usr/local/bin/geco-cloudinit
+    - path: /usr/local/bin/cloudinit
       mode: 0755
       contents:
         inline: |
           #!/bin/bash
           #
-          #  Copyright (c) 2020 Geco-iT Team - All right reserved
-          #  Geco-iT <contact@geco-it.fr>
-          #
-          #  $Id: geco-cloudinit 2020-11-26 18:36:24Z cduchenoy $
           #
           #  Apply Basic Cloudinit Settings
           #
@@ -157,10 +123,10 @@
             }
             # username
             NEWUSERNAME="$(${YQ} ${CIPATH}/user-data 'user' 2> /dev/null)" || true # cant be empty if no cloudinit user defined
-            [[ "x${NEWUSERNAME}" == "x" ]] && NEWUSERNAME="admin" # NEWUSERNAME="core" use "admin" on geco-template
+            [[ "x${NEWUSERNAME}" == "x" ]] && NEWUSERNAME="admin" # NEWUSERNAME="core" use "admin" on template
             getent passwd ${NEWUSERNAME} &> /dev/null || {
               echo -n "[INFO]: Cloudinit: add sytem user: ${NEWUSERNAME}... "
-              useradd --comment "Geco-iT CoreOS Administrator" --create-home \
+              useradd --comment "Administrator" --create-home \
                       --groups adm,wheel,sudo,systemd-journal,docker ${NEWUSERNAME} &> /dev/null || { echo "[failed]"; exit 1; }
               echo "[done]"
             }
@@ -246,7 +212,6 @@
             nmcli connection reload
             nmcli networking off
             nmcli networking on
-            systemctl restart geco-motd.service
             systemctl restart console-login-helper-messages-motdgen.service
           }
 
@@ -260,21 +225,17 @@
 
           exit 0 
 
-# geco-issue
-    - path: /etc/console-login-helper-messages/issue.d/00_geco.issue
+# issue
+    - path: /etc/console-login-helper-messages/issue.d/00-warning.issue
       mode: 0644
       contents:
         inline: |
 
-          Welcome on a server powered by
+          By accessing this system, you consent to the following conditions:
+          - This system is for authorized use only.
+          - Any or all uses of this system and all files on this system may be monitored.
+          - Communications using, or data stored on, this system are not private.
 
-            ,----.                                   ,--. ,--------.
-           '  .-./     ,---.   ,---.  ,---.  ,-----. `--' '--.  .--'
-           |  | .---. | .-. : | .--' | .-. | '-----' ,--.    |  |
-           '  '--'  | \\   --. \\ `--. ' '-' '         |  |    |  |
-            `------'   `----'  `---'  `---'          `--'    `--'
-            
-          .
 
 # kernel config
     - path: /etc/sysctl.d/20-silence-audit.conf
@@ -284,40 +245,91 @@
           # Raise console message logging level from DEBUG (7) to WARNING (4)
           # to hide audit messages from the interactive console
           kernel.printk=4
+    - path: /etc/sysctl.d/50-max-map-count.conf
+      mode: 0644      
+      contents:
+        inline: |
+          max_map_count=262144
+    - path: /etc/sysctl.d/50-max-map-count.conf
+      mode: 0644      
+      contents:
+        inline: |
+          #Increasing the max map 
+          fs.protected_fifos = 2
+          dev.tty.ldisc_autoload = 0
+          fs.protected_hardlinks = 1
+          fs.protected_symlinks = 1
+          fs.suid_dumpable = 0
+          kernel.core_uses_pid = 1
+          kernel.dmesg_restrict = 1
+          kernel.kptr_restrict = 2
+          kernel.panic = 60
+          kernel.panic_on_oops = 60
+          kernel.perf_event_paranoid = 3
+          kernel.randomize_va_space = 2
+          kernel.sysrq = 0
+          kernel.unprivileged_bpf_disabled = 1
+          kernel.yama.ptrace_scope = 2
+          net.core.bpf_jit_harden = 2
+          net.ipv4.conf.all.accept_redirects = 0
+          net.ipv4.conf.all.accept_source_route = 0
+          net.ipv4.conf.all.log_martians = 1
+          net.ipv4.conf.all.rp_filter = 1
+          net.ipv4.conf.all.secure_redirects = 0
+          net.ipv4.conf.all.send_redirects = 0
+          net.ipv4.conf.all.shared_media = 0
+          net.ipv4.conf.default.accept_redirects = 0
+          net.ipv4.conf.default.accept_source_route = 0
+          net.ipv4.conf.default.log_martians = 1
+          net.ipv4.conf.default.rp_filter= 1
+          net.ipv4.conf.default.secure_redirects = 0
+          net.ipv4.conf.default.send_redirects = 0
+          net.ipv4.conf.default.shared_media = 0
+          net.ipv4.icmp_echo_ignore_broadcasts = 1
+          net.ipv4.icmp_ignore_bogus_error_responses = 1
+          net.ipv4.ip_forward = 0
+          net.ipv4.tcp_challenge_ack_limit = 1000000
+          net.ipv4.tcp_invalid_ratelimit = 500
+          net.ipv4.tcp_max_syn_backlog = 20480
+          net.ipv4.tcp_rfc1337 = 1
+          net.ipv4.tcp_syn_retries = 5
+          net.ipv4.tcp_synack_retries = 2
+          net.ipv4.tcp_syncookies = 1
+          net.ipv4.tcp_timestamps = 0
+          net.ipv6.conf.all.accept_ra = 0
+          net.ipv6.conf.all.accept_redirects = 0
+          net.ipv6.conf.all.accept_source_route = 0
+          net.ipv6.conf.all.forwarding = 0
+          net.ipv6.conf.all.use_tempaddr = 2
+          net.ipv6.conf.default.accept_ra = 0
+          net.ipv6.conf.default.accept_ra_defrtr = 0
+          net.ipv6.conf.default.accept_ra_pinfo = 0
+          net.ipv6.conf.default.accept_ra_rtr_pref = 0
+          net.ipv6.conf.default.accept_redirects = 0
+          net.ipv6.conf.default.accept_source_route = 0
+          net.ipv6.conf.default.autoconf = 0
+          net.ipv6.conf.default.dad_transmits = 0
+          net.ipv6.conf.default.max_addresses = 1
+          net.ipv6.conf.default.router_solicitations = 0
+          net.ipv6.conf.default.use_tempaddr = 2
+          net.netfilter.nf_conntrack_max = 2000000
+          net.netfilter.nf_conntrack_tcp_loose = 0
+          net.ipv6.conf.ens18.accept_ra_rtr_pref = 0
+          fs.file-max = 2097152
 
-
-# geco-motd.service
-systemd:
-  units:
-    - name: geco-motd.service
+# cloudinit: apply cloudinit settings on boot
+    - name: cloudinit.service
       enabled: true
       contents: |
         [Unit]
-        Description=Geco-iT Motd
-        Before=console-login-helper-messages-motdgen.service
-        After=network-online.target
-
-        [Service]
-        Type=oneshot
-        ExecStart=/usr/local/bin/geco-motd
-        RemainAfterExit=yes
-
-        [Install]
-        WantedBy=multi-user.target
-
-# geco-cloudinit: apply cloudinit settings on boot
-    - name: geco-cloudinit.service
-      enabled: true
-      contents: |
-        [Unit]
-        Description=Geco-iT Cloudinit
+        Description=Cloudinit
         Wants=network-online.target
         After=network.target network-online.target
  
         [Service]
         Type=oneshot
         TimeoutStartSec=0
-        ExecStart=/usr/local/bin/geco-cloudinit
+        ExecStart=/usr/local/bin/cloudinit
         RemainAfterExit=yes
  
         [Install]
@@ -328,7 +340,7 @@ systemd:
       enabled: true
       contents: |
         [Unit]
-        Description=Geco-iT Setup Qemu Guest Agent
+        Description=Qemu Guest Agent
         After=network-online.target
         Require=network-online.target
         ConditionKernelCommandLine=ignition.platform.id=qemu
