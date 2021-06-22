@@ -7,6 +7,7 @@
           
           OUT=/etc/console-login-helper-messages/issue.d/22_geco.motd
           
+          echo -e "\nWelcome on a server powered by\n" > ${OUT}
           echo -e '\e[33m Welcome this server >> ${OUT}
           echo -e '\e[33m By accessing this system, you consent to the following conditions: >> ${OUT}
           echo -e '\e[33m - This system is for authorized use only. >> ${OUT}
@@ -34,10 +35,6 @@
         inline: |
           #!/bin/bash
           #
-          #  Copyright (c) 2020 Geco-iT Team - All right reserved
-          #  Geco-iT <contact@geco-it.fr>
-          #
-          #  $Id: geco-cloudinit 2020-11-26 18:36:24Z cduchenoy $
           #
           #  Apply Basic Cloudinit Settings
           #
@@ -274,6 +271,7 @@
 
 # ssh banner
     - path: /etc/issue
+      overwrite: true
       mode: 0644
       contents:
         inline: |
@@ -287,6 +285,7 @@
 
 # ssh banner
     - path: /etc/issue.net
+      overwrite: true
       mode: 0644
       contents:
         inline: |
@@ -468,6 +467,9 @@ systemd:
         ExecStart=/bin/rpm-ostree install qemu-guest-agent
         ExecStart=/bin/touch /var/lib/qemu-guest-agent.stamp
         ExecStart=/bin/systemctl --no-block reboot
+
+        [Install]
+        WantedBy=multi-user.target
 
 # fstrim
     - name: fstrim.timer
