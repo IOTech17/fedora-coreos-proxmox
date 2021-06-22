@@ -1,10 +1,44 @@
+# motd script
+    - path: /usr/local/bin/geco-motd
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          
+          OUT=/etc/console-login-helper-messages/issue.d/22_geco.motd
+          
+          echo -e "\nWelcome on a server powered by\n" > ${OUT}
+          echo -e '\e[33m Welcome this server >> ${OUT}
+          echo -e '\e[33m By accessing this system, you consent to the following conditions: >> ${OUT}
+          echo -e '\e[33m - This system is for authorized use only. >> ${OUT}
+          echo -e '\e[33m - Any or all uses of this system and all files on this system may be monitored. >> ${OUT}
+          echo -e '\e[33m - Communications using, or data stored on, this system are not private. >> ${OUT}
+          eval "$(grep -E "^(NAME=|VARIANT=)" /etc/os-release)" && echo -e "\e[33mOperating System:\e[0m ${NAME} ${VARIANT}" >> ${OUT}
+          eval "$(grep ^OSTREE_VERSION /etc/os-release)" && echo -e "\e[33mVersion:\e[0m ${OSTREE_VERSION}" >> ${OUT}
+          echo -e "\e[33mKernel:\e[0m $(uname -r)" >> ${OUT}
+          echo -ne "\e[33mCPU:\e[0m $(grep ^processor /proc/cpuinfo | wc -l)" >> ${OUT}
+          echo "$(grep "^model name" /proc/cpuinfo | head -n1 | awk -F: '{print $2}' | awk -F@ '{print $1}')" >> ${OUT}
+          echo -e "\e[33mRAM:\e[0m $(free | grep Mem | awk '{print $2}' | xargs -i expr {} / 1000 / 1000 | xargs -i printf '%.0fG\n' {})" >> ${OUT}
+          i=0; for disk in $(ls /dev/sd[a-z] /dev/vd[a-z] 2>/dev/null); do
+                lsblk > /dev/null 2>&1 || break
+                echo -e "\e[33mHDD${i} ($(basename ${disk})):\e[0m$(lsblk -n --nodeps ${disk} -o size)" >> ${OUT}
+                i=$((i+1))
+          done
+          echo -e "\n\e[33mHostname:\e[0m "$(hostname -f) >> ${OUT}  
+          sleep 1; echo -e "\e[33mIPv4 Address:\e[0m $(ip route get 8.8.8.8 | awk 'NR==1 {print $7}')" >> ${OUT}
+          echo -e "\e[33mPublic IPv4 Address:\e[0m $(curl https://ipv4.icanhazip.com)\n" >> ${OUT}
+
 # apply cloudinit script
-    - path: /usr/local/bin/cloudinit
+    - path: /usr/local/bin/geco-cloudinit
       mode: 0755
       contents:
         inline: |
           #!/bin/bash
           #
+          #  Copyright (c) 2020 Geco-iT Team - All right reserved
+          #  Geco-iT <contact@geco-it.fr>
+          #
+          #  $Id: geco-cloudinit 2020-11-26 18:36:24Z cduchenoy $
           #
           #  Apply Basic Cloudinit Settings
           #
@@ -123,10 +157,10 @@
             }
             # username
             NEWUSERNAME="$(${YQ} ${CIPATH}/user-data 'user' 2> /dev/null)" || true # cant be empty if no cloudinit user defined
-            [[ "x${NEWUSERNAME}" == "x" ]] && NEWUSERNAME="admin" # NEWUSERNAME="core" use "admin" on template
+            [[ "x${NEWUSERNAME}" == "x" ]] && NEWUSERNAME="admin" # NEWUSERNAME="core" use "admin" on geco-template
             getent passwd ${NEWUSERNAME} &> /dev/null || {
               echo -n "[INFO]: Cloudinit: add sytem user: ${NEWUSERNAME}... "
-              useradd --comment "Administrator" --create-home \
+              useradd --comment "Geco-iT CoreOS Administrator" --create-home \
                       --groups adm,wheel,sudo,systemd-journal,docker ${NEWUSERNAME} &> /dev/null || { echo "[failed]"; exit 1; }
               echo "[done]"
             }
@@ -212,6 +246,7 @@
             nmcli connection reload
             nmcli networking off
             nmcli networking on
+            systemctl restart geco-motd.service
             systemctl restart console-login-helper-messages-motdgen.service
           }
 
@@ -226,15 +261,82 @@
           exit 0 
 
 # issue
-    - path: /etc/console-login-helper-messages/issue.d/00-warning.issue
+    - path: /etc/console-login-helper-messages/issue.d/00_warning.issue
       mode: 0644
       contents:
         inline: |
 
-          By accessing this system, you consent to the following conditions:
-          - This system is for authorized use only.
-          - Any or all uses of this system and all files on this system may be monitored.
-          - Communications using, or data stored on, this system are not private.
+          Welcome this server
+
+           By accessing this system, you consent to the following conditions:
+           - This system is for authorized use only.
+           - Any or all uses of this system and all files on this system may be monitored.
+           - Communications using, or data stored on, this system are not private.
+
+# ssh banner
+    - path: /etc/issue
+      mode: 0644
+      contents:
+        inline: |
+
+          Welcome this server
+
+           By accessing this system, you consent to the following conditions:
+           - This system is for authorized use only.
+           - Any or all uses of this system and all files on this system may be monitored.
+           - Communications using, or data stored on, this system are not private.
+
+# ssh banner
+    - path: /etc/issue.net
+      mode: 0644
+      contents:
+        inline: |
+
+          Welcome this server
+
+           By accessing this system, you consent to the following conditions:
+           - This system is for authorized use only.
+           - Any or all uses of this system and all files on this system may be monitored.
+           - Communications using, or data stored on, this system are not private.
+
+#blacklist protocol/drivers
+    - path: /etc/modprobe.d/blacklist.conf
+      mode: 0644
+      contents:
+        inline: |
+          install cramfs /bin/true
+          install hfs /bin/true
+          install hfsplus /bin/true
+          install jffs2 /bin/true
+          install squashfs /bin/true
+          install udf /bin/true
+          blacklist firewire-core
+          blacklist usb-storage
+          install tipc /bin/true
+          blacklist tipc
+          install rds /bin/true
+          blacklist rds
+          install sctp /bin/true
+          blacklist sctp
+          install dccp /bin/true
+          blacklist dccp
+
+#harden ssh
+    - path: /etc/ssh/sshd_config.d/hardening.conf
+      mode: 0644
+      contents:
+        inline: |
+          AllowAgentForwarding no
+          X11Forwarding NO
+          TCPKeepAlive no
+          MaxSessions 2
+          MaxAuthTries 3
+          LogLevel VERBOSE
+          Compression no
+          ClientAliveCountMax 2
+          AllowTcpForwarding no
+          port 59500
+          Banner /etc/issue.net
 
 
 # kernel config
@@ -244,21 +346,17 @@
         inline: |
           # Raise console message logging level from DEBUG (7) to WARNING (4)
           # to hide audit messages from the interactive console
-          kernel.printk=4
-    - path: /etc/sysctl.d/50-max-map-count.conf
+          kernel.printk = 4
+
+    - path: /etc/sysctl.d/90-sysctl.conf
       mode: 0644      
       contents:
         inline: |
-          max_map_count=262144
-    - path: /etc/sysctl.d/50-hardening.conf
-      mode: 0644      
-      contents:
-        inline: |
-          #sysctl security hardening 
           fs.protected_fifos = 2
           dev.tty.ldisc_autoload = 0
           fs.protected_hardlinks = 1
           fs.protected_symlinks = 1
+          fs.protected_regular = 2
           fs.suid_dumpable = 0
           kernel.core_uses_pid = 1
           kernel.dmesg_restrict = 1
@@ -315,20 +413,40 @@
           net.netfilter.nf_conntrack_max = 2000000
           net.netfilter.nf_conntrack_tcp_loose = 0
           net.ipv6.conf.ens18.accept_ra_rtr_pref = 0
+          vm.max_map_count = 262144
 
-# cloudinit: apply cloudinit settings on boot
-    - name: cloudinit.service
+# geco-motd.service
+systemd:
+  units:
+    - name: geco-motd.service
       enabled: true
       contents: |
         [Unit]
-        Description=Cloudinit
+        Description=Geco-iT Motd
+        Before=console-login-helper-messages-motdgen.service
+        After=network-online.target
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/bin/geco-motd
+        RemainAfterExit=yes
+
+        [Install]
+        WantedBy=multi-user.target
+
+# geco-cloudinit: apply cloudinit settings on boot
+    - name: geco-cloudinit.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Geco-iT Cloudinit
         Wants=network-online.target
         After=network.target network-online.target
  
         [Service]
         Type=oneshot
         TimeoutStartSec=0
-        ExecStart=/usr/local/bin/cloudinit
+        ExecStart=/usr/local/bin/geco-cloudinit
         RemainAfterExit=yes
  
         [Install]
@@ -339,7 +457,7 @@
       enabled: true
       contents: |
         [Unit]
-        Description=Qemu Guest Agent
+        Description=Setup Qemu Guest Agent
         After=network-online.target
         Require=network-online.target
         ConditionKernelCommandLine=ignition.platform.id=qemu
@@ -351,9 +469,6 @@
         ExecStart=/bin/rpm-ostree install qemu-guest-agent
         ExecStart=/bin/touch /var/lib/qemu-guest-agent.stamp
         ExecStart=/bin/systemctl --no-block reboot
-
-        [Install]
-        WantedBy=multi-user.target
 
 # fstrim
     - name: fstrim.timer
