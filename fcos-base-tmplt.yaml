@@ -7,7 +7,6 @@
           
           OUT=/etc/console-login-helper-messages/issue.d/22_geco.motd
           
-          echo -e "\nWelcome on a server powered by\n" > ${OUT}
           echo -e '\e[33m Welcome this server >> ${OUT}
           echo -e '\e[33m By accessing this system, you consent to the following conditions: >> ${OUT}
           echo -e '\e[33m - This system is for authorized use only. >> ${OUT}
