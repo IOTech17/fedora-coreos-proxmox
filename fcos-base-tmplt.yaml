@@ -244,6 +244,7 @@
             nmcli networking on
             systemctl restart geco-motd.service
             systemctl restart console-login-helper-messages-motdgen.service
+            systemctl enable docker.service
           }
 
           echo -n "[INFO]: Cloudinit: save instance id... "
