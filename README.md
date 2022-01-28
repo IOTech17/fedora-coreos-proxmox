@@ -31,7 +31,8 @@ it contains :
 * Install CloudInit wrapper
 * Raise console message logging level from DEBUG (7) to WARNING (4)
 * Add motd/issue
-* Reach 78+ on Lynis hardening score by tweaking sshd config, sysct.cong and blacklisting unused drivers/protocols/file system
+* Enable docker.service
+* Reach 78+ on Lynis hardening score by tweaking sshd config, sysctl.conf and blacklisting unused drivers/protocols/file system
 
 ## Operation
 
