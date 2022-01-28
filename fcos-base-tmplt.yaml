@@ -244,7 +244,6 @@
             nmcli networking on
             systemctl restart geco-motd.service
             systemctl restart console-login-helper-messages-motdgen.service
-            systemctl enable docker.service
           }
 
           echo -n "[INFO]: Cloudinit: save instance id... "
@@ -326,7 +325,7 @@
       contents:
         inline: |
           AllowAgentForwarding no
-          X11Forwarding NO
+          X11Forwarding no
           TCPKeepAlive no
           MaxSessions 2
           MaxAuthTries 3
@@ -432,6 +431,12 @@ systemd:
 
         [Install]
         WantedBy=multi-user.target
+        
+# docker.service
+systemd:
+  units:
+    - name: docker.service
+      enabled: true
 
 # geco-cloudinit: apply cloudinit settings on boot
     - name: geco-cloudinit.service
