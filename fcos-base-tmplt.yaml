@@ -335,7 +335,14 @@
           AllowTcpForwarding no
           port 59500
           Banner /etc/issue.net
-
+          
+#Disabling core dumps
+    - path: /etc/security/limits.d/disablecoredumps.conf
+      mode: 0644
+      contents:
+        inline: |
+          * hard core 0
+          * soft core 0
 
 # kernel config
     - path: /etc/sysctl.d/20-silence-audit.conf
