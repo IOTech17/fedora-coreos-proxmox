@@ -11,8 +11,8 @@ export LANG=C
 export LC_ALL=C
 
 # template vm vars
-TEMPLATE_VMID="10010"
-TEMPLATE_VMSTORAGE="local"
+TEMPLATE_VMID="10000"
+TEMPLATE_VMSTORAGE="local-lvm"
 SNIPPET_STORAGE="local"
 VMDISK_OPTIONS=",discard=on"
 
