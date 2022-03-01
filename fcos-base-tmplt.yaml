@@ -440,9 +440,9 @@ systemd:
         WantedBy=multi-user.target
         
 # docker.service
-  units:
-    - name: docker.service
-      enabled: true
+#  units:
+#    - name: docker.service
+#      enabled: true
 
 # geco-cloudinit: apply cloudinit settings on boot
     - name: geco-cloudinit.service
