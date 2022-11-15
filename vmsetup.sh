@@ -14,13 +14,13 @@ export LC_ALL=C
 TEMPLATE_VMID="10000"
 TEMPLATE_VMSTORAGE="local-lvm"
 SNIPPET_STORAGE="local"
-VMDISK_OPTIONS=",discard=on"
+VMDISK_OPTIONS=",discard=on,iothread=1"
 
 TEMPLATE_IGNITION="fcos-base-tmplt.yaml"
 
 # fcos version
 STREAMS=stable
-VERSION=36.20220723.3.1
+VERSION=36.20221014.3.1
 PLATEFORM=qemu
 BASEURL=https://builds.coreos.fedoraproject.org
 
