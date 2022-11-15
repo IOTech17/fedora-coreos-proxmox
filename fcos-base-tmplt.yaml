@@ -325,7 +325,7 @@
       contents:
         inline: |
           AllowAgentForwarding no
-          X11Forwarding no
+          X11Forwarding NO
           TCPKeepAlive no
           MaxSessions 2
           MaxAuthTries 3
@@ -374,6 +374,7 @@
           kernel.unprivileged_bpf_disabled = 1
           kernel.yama.ptrace_scope = 2
           net.core.bpf_jit_harden = 2
+          net.ipv4.conf.all.forwarding = 0
           net.ipv4.conf.all.accept_redirects = 0
           net.ipv4.conf.all.accept_source_route = 0
           net.ipv4.conf.all.log_martians = 1
