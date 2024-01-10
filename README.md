@@ -58,3 +58,7 @@ Only these parameters are supported by our cloudinit wrapper:
 * IP Configuration (ipv4 only)
 
 The settings are applied at boot
+
+## Hardening
+
+This image has been configured to pass lynis hardening assessment, we are currently at a score of 82%
