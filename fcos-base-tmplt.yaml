@@ -420,6 +420,21 @@
           net.netfilter.nf_conntrack_tcp_loose = 0
           net.ipv6.conf.ens18.accept_ra_rtr_pref = 0
           vm.max_map_count = 1048575
+          
+    - path: /etc/zincati/config.d/55-updates-strategy.toml
+      mode: 0644     
+      contents:
+        inline: |
+          [updates]
+          strategy = "periodic"
+
+          [updates.periodic]
+          time_zone = "Europe/Warsaw"
+
+          [[updates.periodic.window]]
+          days = [ "Sun" ]
+          start_time = "03:30"
+          length_minutes = 60
 
 # geco-motd.service
 systemd:
@@ -441,9 +456,8 @@ systemd:
         WantedBy=multi-user.target
         
 # docker.service
-#  units:
-#    - name: docker.service
-#      enabled: true
+    - name: docker.service
+      enabled: true
 
 # geco-cloudinit: apply cloudinit settings on boot
     - name: geco-cloudinit.service
