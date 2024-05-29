@@ -45,7 +45,7 @@ echo "[ok]"
 
 # pve storage snippet enable
 pvesh get /storage/${SNIPPET_STORAGE} --noborder --noheader | grep -q snippets || {
-	echo "You musr activate content snippet on storage: ${SNIPPET_STORAGE}"
+	echo "You must activate content snippet on storage: ${SNIPPET_STORAGE}"
 	exit 1
 }
 
