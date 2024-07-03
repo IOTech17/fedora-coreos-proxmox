@@ -88,6 +88,7 @@ qm set ${TEMPLATE_VMID} --memory 8192 \
 			--ostype l26 \
 			--tablet 0 \
 			--boot c --bootdisk virtio0
+   			--serial0 socket
 
 template_vmcreated=$(date +%Y-%m-%d)
 qm set ${TEMPLATE_VMID} --description "Fedora CoreOS - Template
