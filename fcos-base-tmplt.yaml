@@ -8,11 +8,11 @@
           OUT=/etc/console-login-helper-messages/issue.d/22_geco.motd
           
           echo -e "\nWelcome on a server powered by\n" > ${OUT}
-          echo -e '\e[33m Welcome this server >> ${OUT}
-          echo -e '\e[33m By accessing this system, you consent to the following conditions: >> ${OUT}
-          echo -e '\e[33m - This system is for authorized use only. >> ${OUT}
-          echo -e '\e[33m - Any or all uses of this system and all files on this system may be monitored. >> ${OUT}
-          echo -e '\e[33m - Communications using, or data stored on, this system are not private. >> ${OUT}
+          echo -e "\e[33m Welcome this server" >> ${OUT}
+          echo -e "\e[33m By accessing this system, you consent to the following conditions:" >> ${OUT}
+          echo -e "\e[33m - This system is for authorized use only." >> ${OUT}
+          echo -e "\e[33m - Any or all uses of this system and all files on this system may be monitored." >> ${OUT}
+          echo -e "\e[33m - Communications using, or data stored on, this system are not private." >> ${OUT}
           eval "$(grep -E "^(NAME=|VARIANT=)" /etc/os-release)" && echo -e "\e[33mOperating System:\e[0m ${NAME} ${VARIANT}" >> ${OUT}
           eval "$(grep ^OSTREE_VERSION /etc/os-release)" && echo -e "\e[33mVersion:\e[0m ${OSTREE_VERSION}" >> ${OUT}
           echo -e "\e[33mKernel:\e[0m $(uname -r)" >> ${OUT}
