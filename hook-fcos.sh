@@ -47,9 +47,8 @@ setup_yq
 if [[ "${phase}" == "pre-start" ]]
 then
 	instance_id="$(qm cloudinit dump ${vmid} meta | ${YQ} - 'instance-id')"
-
 	# same cloudinit config ?
-	[[ -e ${COREOS_FILES_PATH}/${vmid}.id ]] && [[ "x${instance_id}" != "x$(cat ${COREOS_FILES_PATH}/${vmid}.id)" ]]&& {
+	[[ -e ${COREOS_FILES_PATH}/${vmid}.id ]] && [[ -n $instance_id ]] && [[ "x${instance_id}" != "x$(cat ${COREOS_FILES_PATH}/${vmid}.id)" ]]&& {
 		rm -f ${COREOS_FILES_PATH}/${vmid}.ign # cloudinit config change
 	}
 	[[ -e ${COREOS_FILES_PATH}/${vmid}.ign ]]&& exit 0 # already done
