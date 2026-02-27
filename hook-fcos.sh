@@ -13,20 +13,20 @@ YQ="/usr/local/bin/yq read --exitStatus --printMode v --stripComments --"
 # ==================================================================================================================================================================
 # functions()
 #
-setup_fcoreosct()
+setup_butane()
 {
-        local CT_VER=0.7.0
+        local CT_VER=0.26.0
         local ARCH=x86_64
         local OS=unknown-linux-gnu # Linux
-        local DOWNLOAD_URL=https://github.com/coreos/fcct/releases/download
+        local DOWNLOAD_URL=https://github.com/coreos/butane/releases/download
  
-        [[ -x /usr/local/bin/fcos-ct ]]&& [[ "x$(/usr/local/bin/fcos-ct --version | awk '{print $NF}')" == "x${CT_VER}" ]]&& return 0
+        [[ -x /usr/local/bin/butane ]]&& [[ "x$(/usr/local/bin/butane --version | awk '{print $NF}')" == "x${CT_VER}" ]]&& return 0
         echo "Setup Fedora CoreOS config transpiler..."
-        rm -f /usr/local/bin/fcos-ct
-        wget --quiet --show-progress ${DOWNLOAD_URL}/v${CT_VER}/fcct-${ARCH}-${OS} -O /usr/local/bin/fcos-ct
-        chmod 755 /usr/local/bin/fcos-ct
+        rm -f /usr/local/bin/butane
+        wget --quiet --show-progress ${DOWNLOAD_URL}/v${CT_VER}/butane-${ARCH}-${OS} -O /usr/local/bin/butane
+        chmod 755 /usr/local/bin/butane
 }
-setup_fcoreosct
+setup_butane
 
 setup_yq()
 {
@@ -129,7 +129,7 @@ then
 	}
 
 	echo -n "Fedora CoreOS: Generate ignition config... "
-	/usr/local/bin/fcos-ct 	--pretty --strict \
+	/usr/local/bin/butane 	--pretty --strict \
 				--output ${COREOS_FILES_PATH}/${vmid}.ign \
 				${COREOS_FILES_PATH}/${vmid}.yaml 2> /dev/null
 	[[ $? -eq 0 ]] || {
