@@ -37,8 +37,8 @@
               userdel --force --remove ${user}
             done
 
-            echo "Purge all docker ressources..."
-            docker system prune --all --force
+            echo "Purge all podman ressources..."
+            podman system prune --all --force
 
             echo "Remove all network/machine settings..."
             rm -f /var/lib/NetworkManager/*
@@ -125,9 +125,9 @@
             NEWUSERNAME="$(${YQ} ${CIPATH}/user-data 'user' 2> /dev/null)" || true # cant be empty if no cloudinit user defined
             [[ "x${NEWUSERNAME}" == "x" ]] && NEWUSERNAME="admin" # NEWUSERNAME="core" use "admin" on fcos-template
             getent passwd ${NEWUSERNAME} &> /dev/null || {
-              echo -n "[INFO]: Cloudinit: add sytem user: ${NEWUSERNAME}... "
+              echo -n "[INFO]: Cloudinit: add system user: ${NEWUSERNAME}... "
               useradd --comment "CoreOS Administrator" --create-home \
-                      --groups adm,wheel,sudo,systemd-journal,docker ${NEWUSERNAME} &> /dev/null || { echo "[failed]"; exit 1; }
+                      --groups adm,wheel,sudo,systemd-journal ${NEWUSERNAME} &> /dev/null || { echo "[failed]"; exit 1; }
               echo "[done]"
             }
             # passwd
@@ -304,7 +304,7 @@
           AllowTcpForwarding no
           port 59500
           Banner /etc/issue.net
-          
+
 #Disabling core dumps
     - path: /etc/security/limits.d/disablecoredumps.conf
       mode: 0644
@@ -323,7 +323,7 @@
           kernel.printk = 4
 
     - path: /etc/sysctl.d/90-sysctl.conf
-      mode: 0644 
+      mode: 0644
       contents:
         inline: |
           fs.protected_fifos = 2
@@ -389,7 +389,7 @@
           net.netfilter.nf_conntrack_tcp_loose = 0
           net.ipv6.conf.ens18.accept_ra_rtr_pref = 0
           vm.max_map_count = 1048575
-          
+
     - path: /etc/zincati/config.d/55-updates-strategy.toml
       mode: 0644
       contents:
@@ -405,11 +405,61 @@
           start_time = "03:30"
           length_minutes = 60
 
+# setup-user-podman-script: script called by setup-user-podman.service
+# Written to disk by Ignition, executed once at first boot.
+    - path: /usr/local/bin/setup-user-podman
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          set -e
+          CIUSER=$(awk -F: '$5 == "CoreOS Administrator" {print $1; exit}' /etc/passwd)
+          echo "Setup rootless podman socket for user: ${CIUSER}"
+          loginctl enable-linger ${CIUSER}
+          mkdir -p /var/home/${CIUSER}/.config/systemd/user/default.target.wants
+          ln -sf /usr/lib/systemd/user/podman.socket \
+            /var/home/${CIUSER}/.config/systemd/user/default.target.wants/podman.socket
+          chown -R ${CIUSER}:${CIUSER} /var/home/${CIUSER}/.config
+          XDG_RUNTIME_DIR=/run/user/$(id -u ${CIUSER}) \
+            systemctl --user --machine=${CIUSER}@.host start podman.socket
+          touch /var/lib/setup-user-podman.stamp
+
 systemd:
-  units:        
-# docker.service
+  units:
+# disable and mask docker - replaced by podman
     - name: docker.service
+      enabled: false
+      mask: true
+
+    - name: docker.socket
+      enabled: false
+      mask: true
+
+# enable system-level podman socket (API compatible Docker, for root)
+    - name: podman.socket
       enabled: true
+
+# setup-fcos-packages: remove moby-engine/docker-cli, install qemu-guest-agent + podman-compose + podman-docker
+    - name: setup-fcos-packages.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Setup FCOS packages (qemu-guest-agent, podman-compose, podman-docker)
+        After=network-online.target
+        Requires=network-online.target
+        ConditionKernelCommandLine=ignition.platform.id=qemu
+        ConditionPathExists=!/var/lib/fcos-packages.stamp
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/bin/rpm-ostree override remove docker-cli moby-engine
+        ExecStart=/bin/rpm-ostree install qemu-guest-agent podman-compose podman-docker
+        ExecStart=/bin/touch /var/lib/fcos-packages.stamp
+        ExecStart=/bin/systemctl --no-block reboot
+
+        [Install]
+        WantedBy=multi-user.target
 
 # fcos-cloudinit: apply cloudinit settings on boot
     - name: fcos-cloudinit.service
@@ -425,27 +475,26 @@ systemd:
         TimeoutStartSec=0
         ExecStart=/usr/local/bin/fcos-cloudinit
         RemainAfterExit=yes
- 
+
         [Install]
         WantedBy=multi-user.target
 
-# qemu-guest-agent
-    - name: setup-qemu-guest-agent.service
+# setup-user-podman: enable rootless podman socket for the cloudinit user
+# Detects the first non-system user (uid >= 1000) created by Ignition
+# and configures podman.socket to start automatically without a login session.
+    - name: setup-user-podman.service
       enabled: true
       contents: |
         [Unit]
-        Description=Setup Qemu Guest Agent
+        Description=Setup rootless podman socket for cloudinit user
         After=network-online.target
-        Require=network-online.target
-        ConditionKernelCommandLine=ignition.platform.id=qemu
-        ConditionPathExists=!/var/lib/qemu-guest-agent.stamp
+        Wants=network-online.target
+        ConditionPathExists=!/var/lib/setup-user-podman.stamp
 
         [Service]
         Type=oneshot
         RemainAfterExit=yes
-        ExecStart=/bin/rpm-ostree install qemu-guest-agent
-        ExecStart=/bin/touch /var/lib/qemu-guest-agent.stamp
-        ExecStart=/bin/systemctl --no-block reboot
+        ExecStart=/usr/local/bin/setup-user-podman
 
         [Install]
         WantedBy=multi-user.target
@@ -453,7 +502,7 @@ systemd:
 # fstrim
     - name: fstrim.timer
       enabled: true
- 
+
     - name: fstrim.service
       dropins:
         - name: override.conf
