@@ -18,10 +18,13 @@ The `fcos-base-tmplt.yaml` ignition template provides a production-ready FCOS ba
   - `docker.service` and `docker.socket` masked
 - **qemu-guest-agent** — installed and running on first boot
 - **fcos-cloudinit** — cloud-init wrapper script applied at every boot
-- **SSH hardening** — custom port `59500`, restricted options
+- **update-hosts** — updates `/etc/hosts` with current IP and hostname at every boot
+- **harden-login-defs** — patches `/etc/login.defs` with stricter password policy on first boot
+- **SSH hardening** — custom port `59500`, X11 disabled, restricted options
 - **Kernel hardening** — sysctl tuning, driver/protocol blacklisting
 - **fstrim** — periodic TRIM enabled for SSD storage
 - **Zincati** — automatic updates configured with a weekly maintenance window
+- **Lynis score** — 81/100
 
 ---
 
@@ -38,11 +41,11 @@ The `fcos-base-tmplt.yaml` ignition template provides a production-ready FCOS ba
 Edit `vmsetup.sh` before running:
 
 ```bash
-TEMPLATE_VMID="10000"        # Proxmox VMID for the template
-TEMPLATE_VMSTORAGE="local-lvm"  # Storage for the VM disk
-SNIPPET_STORAGE="local"      # Storage for hook script and ignition file
-VMDISK_OPTIONS=",discard=on,iothread=1"  # VM disk options
-VERSION=43.20251024.3.0      # FCOS stable version to deploy
+TEMPLATE_VMID="10000"                        # Proxmox VMID for the template
+TEMPLATE_VMSTORAGE="local-lvm"               # Storage for the VM disk
+SNIPPET_STORAGE="local"                      # Storage for hook script and ignition file
+VMDISK_OPTIONS=",discard=on,iothread=1"      # VM disk options
+VERSION=43.20251024.3.0                      # FCOS stable version to deploy
 ```
 
 To find the latest stable FCOS version, check:
@@ -83,7 +86,7 @@ The VM goes through two automatic reboots:
 | Boot | What happens |
 |------|-------------|
 | 1st  | Ignition applies configuration, removes Docker packages, installs Podman + qemu-guest-agent → **automatic reboot** |
-| 2nd  | System is fully operational — Podman rootless socket active for your user |
+| 2nd  | System fully operational — Podman rootless socket active, SSH on port 59500 |
 
 > ⚠️ The network must be operational on first boot for package installation.
 
@@ -111,25 +114,58 @@ This template uses **Podman** instead of Docker:
 
 - Daemonless and rootless by default — no daemon running as root
 - Compatible with Docker images (OCI format)
-- `podman-docker` provides a `docker` CLI shim for compatibility
+- `podman-docker` provides a `docker` CLI shim for full compatibility
 - `podman-compose` supports `docker-compose.yml` files
 
-The rootless `podman.socket` is automatically enabled for the cloud-init user at first boot. You can verify with:
+The rootless `podman.socket` is automatically enabled for the cloud-init user at first boot:
 
 ```bash
 ls $XDG_RUNTIME_DIR/podman/podman.sock
+# /run/user/1001/podman/podman.sock
 ```
 
 ---
 
 ## Hardening
 
-This template is configured to achieve a high score on [Lynis](https://cisofy.com/lynis/) hardening assessments (~82%):
+This template achieves a **Lynis score of 81/100**.
 
-- SSH: custom port, agent forwarding disabled, X11 disabled, compression disabled, strict auth limits
-- Kernel: sysctl tuning (network stack hardening, ASLR, dmesg restriction, BPF hardening)
-- Modules: unused filesystems, protocols and drivers blacklisted (cramfs, hfs, tipc, rds, sctp, dccp, firewire, usb-storage)
-- Core dumps disabled
+### SSH
+- Custom port `59500`
+- `X11Forwarding no`
+- Agent forwarding, TCP forwarding, compression disabled
+- Strict auth limits (`MaxAuthTries 3`, `MaxSessions 2`)
+- Login banner configured
+
+### Kernel (sysctl)
+- Network stack hardening (redirects, source routing, martians logging)
+- ASLR enabled (`kernel.randomize_va_space = 2`)
+- dmesg restricted, BPF hardening, ptrace scope
+- TCP hardening (syncookies, timestamps, fin timeout, keepalive tuning)
+
+### Modules
+Unused filesystems, protocols and drivers blacklisted: `cramfs`, `hfs`, `hfsplus`, `jffs2`, `squashfs`, `udf`, `firewire-core`, `usb-storage`, `tipc`, `rds`, `sctp`, `dccp`
+
+### Password policy (`/etc/login.defs`)
+- `PASS_MAX_DAYS 365`
+- `PASS_MIN_DAYS 1`
+- `PASS_MIN_LEN 12`
+- `UMASK 027`
+- Encryption: YESCRYPT (FCOS default, stronger than SHA512)
+
+### Core dumps
+Disabled via `/etc/security/limits.d/disablecoredumps.conf`
+
+### Known acceptable findings
+| Finding | Reason |
+|---------|--------|
+| `kernel.modules_disabled = 1` | Would break Podman and FCOS updates |
+| `FIRE-4590` firewall | Architectural choice, use external firewall |
+| `FINT-4350` file integrity tool | Out of scope for base template |
+| `HRDN-7230` malware scanner | Out of scope for base template |
+| `ACCT-9622/9626` process accounting | Overhead not justified |
+| `AUTH-9216/9228` grpck/pwck errors | Inherent to FCOS immutable OS design |
+| `FILE-6310` /home symlink | FCOS uses `/var/home` by design |
 
 ---
 
