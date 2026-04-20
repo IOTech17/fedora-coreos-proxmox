@@ -468,6 +468,9 @@
           chown -R ${CIUSER}:${CIUSER} /var/home/${CIUSER}/.config
           XDG_RUNTIME_DIR=/run/user/$(id -u ${CIUSER}) \
             systemctl --user --machine=${CIUSER}@.host start podman.socket
+          # enable podman-restart.service to restart containers with restart: always after reboot
+          XDG_RUNTIME_DIR=/run/user/$(id -u ${CIUSER}) \
+            systemctl --user --machine=${CIUSER}@.host enable --now podman-restart.service
           touch /var/lib/setup-user-podman.stamp
 
 systemd:
