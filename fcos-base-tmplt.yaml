@@ -471,6 +471,9 @@
           # enable podman-restart.service to restart containers with restart: always after reboot
           XDG_RUNTIME_DIR=/run/user/$(id -u ${CIUSER}) \
             systemctl --user --machine=${CIUSER}@.host enable --now podman-restart.service
+          # enable podman-auto-update.timer to automatically update container images daily
+          XDG_RUNTIME_DIR=/run/user/$(id -u ${CIUSER}) \
+            systemctl --user --machine=${CIUSER}@.host enable --now podman-auto-update.timer
           touch /var/lib/setup-user-podman.stamp
 
 systemd:

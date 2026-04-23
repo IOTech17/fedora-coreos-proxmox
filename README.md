@@ -176,6 +176,116 @@ https://docs.fedoraproject.org/en-US/fedora-coreos/
 
 ---
 
+---
+
+## Container management with Quadlet
+
+For management containers like Dockhand, Portainer, or similar tools that need to survive reboots and auto-update, use **Quadlet** instead of `podman-compose`. Quadlet integrates containers directly into systemd, giving you native restart handling and automatic image updates.
+
+### Why Quadlet for management containers
+
+- `Restart=always` is handled by systemd — no dependency on `podman-restart.service`
+- `podman auto-update` works natively — no more errors with `podman-compose`
+- Automatic rollback if a new image fails to start
+- Standard `systemctl` commands to manage the container lifecycle
+
+### Setup
+
+Create the Quadlet directory:
+
+```bash
+mkdir -p ~/.config/containers/systemd/
+```
+
+Create `~/.config/containers/systemd/dockhand.container`:
+
+```ini
+[Unit]
+Description=Dockhand container
+After=network-online.target local-fs.target
+Wants=network-online.target
+
+[Container]
+Image=docker.io/fnsys/dockhand:latest
+ContainerName=dockhand
+
+# Ports
+PublishPort=3000:3000
+
+# Volumes — replace <your_volume_name> with your actual volume name (podman volume ls)
+Volume=<your_volume_name>:/app/data
+
+# Socket access (rootless podman)
+Volume=%t/podman/podman.sock:/var/run/docker.sock:z
+
+# Privileges required for container management tools
+# Risk is limited on a single-user dedicated VM
+PodmanArgs=--privileged
+
+# Auto-update label
+Label=io.containers.autoupdate=registry
+
+# Healthcheck
+HealthCmd=curl -f http://localhost:3000/
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=5s
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target
+```
+
+Reload systemd and start the container:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user start dockhand.service
+systemctl --user status dockhand.service
+```
+
+### Useful commands
+
+```bash
+# View logs
+journalctl --user -u dockhand.service -f
+
+# Stop / start / restart
+systemctl --user stop dockhand.service
+systemctl --user start dockhand.service
+systemctl --user restart dockhand.service
+
+# Manual image update
+podman pull docker.io/fnsys/dockhand:latest
+systemctl --user restart dockhand.service
+```
+
+### Automatic image updates
+
+The `podman-auto-update.timer` is enabled automatically on every new VM by the `setup-user-podman` service in the template.
+
+For `podman auto-update` to update a container, it must have the label `io.containers.autoupdate=registry` — already included in the example above.
+
+To trigger an immediate update check:
+
+```bash
+podman auto-update
+```
+
+To check when the next automatic update is scheduled:
+
+```bash
+systemctl --user list-timers podman-auto-update.timer
+```
+
+### Other containers
+
+Containers managed by Dockhand (or Portainer) restart automatically after a reboot via `podman-restart.service`, which is enabled by the template. Only the management container itself needs to be defined as a Quadlet unit.
+
 ## Credits
 
 Originally based on the [Geco-IT fedora-coreos-proxmox](https://git.geco-it.net/GECO-IT-PUBLIC/fedora-coreos-proxmox) project.
