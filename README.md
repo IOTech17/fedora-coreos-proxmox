@@ -176,8 +176,6 @@ https://docs.fedoraproject.org/en-US/fedora-coreos/
 
 ---
 
----
-
 ## Container management with Quadlet
 
 For management containers like Dockhand, Portainer, or similar tools that need to survive reboots and auto-update, use **Quadlet** instead of `podman-compose`. Quadlet integrates containers directly into systemd, giving you native restart handling and automatic image updates.
