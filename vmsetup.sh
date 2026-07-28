@@ -15,6 +15,7 @@ TEMPLATE_VMID="10000"
 TEMPLATE_VMSTORAGE="local-lvm"
 SNIPPET_STORAGE="local"
 VMDISK_OPTIONS=",discard=on,iothread=1"
+VMNET="vmbr1"
 
 TEMPLATE_IGNITION="fcos-base-tmplt.yaml"
 
@@ -99,7 +100,7 @@ qm set ${TEMPLATE_VMID} --description "Fedora CoreOS - Template
 Creation date : ${template_vmcreated}
 "
 
-qm set ${TEMPLATE_VMID} --net0 virtio,bridge=vmbr1
+qm set ${TEMPLATE_VMID} --net0 virtio,bridge=${VMNET}
 #qm set ${TEMPLATE_VMID} --net1 virtio,bridge=vmbr1
 
 echo -e "\nCreate Cloud-init vmdisk..."
