@@ -46,7 +46,7 @@ TEMPLATE_VMSTORAGE="local-lvm"               # Storage for the VM disk
 SNIPPET_STORAGE="local"                      # Storage for hook script and ignition file
 VMDISK_OPTIONS=",discard=on,iothread=1"      # VM disk options
 VERSION=43.20251024.3.0                      # FCOS stable version to deploy
-HOST_VMNET="vmbr1"                           # Name of Proxmox network bridge in use
+VMNET="vmbr1"                                # Name of Proxmox network bridge in use
 ```
 
 To find the latest stable FCOS version, check:
