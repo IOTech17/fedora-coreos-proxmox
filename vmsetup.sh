@@ -21,7 +21,7 @@ TEMPLATE_IGNITION="fcos-base-tmplt.yaml"
 # fcos version
 STREAMS=stable
 VERSION=42.20251012.3.0
-PLATEFORM=qemu
+PLATFORM=qemu
 BASEURL=https://builds.coreos.fedoraproject.org
 
 # =============================================================================================
@@ -59,7 +59,7 @@ chmod 755 ${snippet_storage}/snippets/hook-fcos.sh
 # storage type ? (https://pve.proxmox.com/wiki/Storage)
 echo -n "Get storage \"${TEMPLATE_VMSTORAGE}\" type... "
 case "$(pvesh get /storage/${TEMPLATE_VMSTORAGE} --noborder --noheader | grep ^type | awk '{print $2}')" in
-        dir|nfs|cifs|glusterfs|cephfs) TEMPLATE_VMSTORAGE_type="file"; echo "[file]"; ;;
+        btrfs|dir|nfs|cifs|glusterfs|cephfs) TEMPLATE_VMSTORAGE_type="file"; echo "[file]"; ;;
         lvm|lvmthin|iscsi|iscsidirect|rbd|zfs|zfspool) TEMPLATE_VMSTORAGE_type="block"; echo "[block]" ;;
         *)
                 echo "[unknown]"
@@ -68,12 +68,12 @@ case "$(pvesh get /storage/${TEMPLATE_VMSTORAGE} --noborder --noheader | grep ^t
 esac
 
 # download fcos vdisk
-[[ ! -e fedora-coreos-${VERSION}-${PLATEFORM}.x86_64.qcow2 ]]&& {
+[[ ! -e fedora-coreos-${VERSION}-${PLATFORM}.x86_64.qcow2 ]]&& {
     echo "Download fedora coreos..."
     wget -q --show-progress \
-        ${BASEURL}/prod/streams/${STREAMS}/builds/${VERSION}/x86_64/fedora-coreos-${VERSION}-${PLATEFORM}.x86_64.qcow2.xz
-    xz -dv fedora-coreos-${VERSION}-${PLATEFORM}.x86_64.qcow2.xz
-    qemu-img convert -f qcow2 -O raw fedora-coreos-${VERSION}-${PLATEFORM}.x86_64.qcow2 fedora-coreos-${VERSION}-${PLATEFORM}.x86_64.raw
+        ${BASEURL}/prod/streams/${STREAMS}/builds/${VERSION}/x86_64/fedora-coreos-${VERSION}-${PLATFORM}.x86_64.qcow2.xz
+    xz -dv fedora-coreos-${VERSION}-${PLATFORM}.x86_64.qcow2.xz
+    qemu-img convert -f qcow2 -O raw fedora-coreos-${VERSION}-${PLATFORM}.x86_64.qcow2 fedora-coreos-${VERSION}-${PLATFORM}.x86_64.raw
 }
 
 # create a new VM
@@ -114,7 +114,7 @@ else
 	vmdisk_name="vm-${TEMPLATE_VMID}-disk-0"
         vmdisk_format=""
 fi
-qm importdisk ${TEMPLATE_VMID} fedora-coreos-${VERSION}-${PLATEFORM}.x86_64.raw ${TEMPLATE_VMSTORAGE} ${vmdisk_format}
+qm importdisk ${TEMPLATE_VMID} fedora-coreos-${VERSION}-${PLATFORM}.x86_64.raw ${TEMPLATE_VMSTORAGE} ${vmdisk_format}
 qm set ${TEMPLATE_VMID} --scsihw virtio-scsi-pci --virtio0 ${TEMPLATE_VMSTORAGE}:${vmdisk_name}${VMDISK_OPTIONS}
 
 # set hook-script
