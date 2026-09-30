@@ -131,6 +131,10 @@ Volume=dockhand_data:/app/data
 Volume=%t/podman/podman.sock:/var/run/docker.sock:z
 # Required for the socket access (SELinux); no --privileged
 SecurityLabelDisable=true
+# Resources: always set limits (docker compose runs inside the tool during stack deploys)
+Memory=1g
+PidsLimit=512
+PodmanArgs=--memory-reservation=256m --cpus=2
 Label=io.containers.autoupdate=registry
 HealthCmd=curl -f http://localhost:3000/
 HealthInterval=30s
@@ -153,6 +157,8 @@ $AS systemctl --user start dockhand.service
 
 Containers created by such a tool restart after a reboot through `podman-restart.service`; only the tool itself needs a Quadlet unit.
 
+Set resource limits on every container (Compose: `mem_limit`, `mem_reservation`, `pids_limit`, `cpus`), sized from the measured peak (`memory.peak` of the container cgroup) with a margin: without limits, one container can exhaust the memory of the VM. The `cpu`, `memory` and `pids` cgroup controllers are delegated to the `podman` account, so the limits apply in rootless mode.
+
 ---
 
 ## Hardening
@@ -164,6 +170,7 @@ Containers created by such a tool restart after a reboot through `podman-restart
 | Modules | Blacklisted: `cramfs hfs hfsplus jffs2 squashfs udf firewire-core usb-storage tipc rds sctp dccp` |
 | Audit | `auditd` watches `sudoers`, accounts (`passwd`, `shadow`, `group`, `subuid`…), SSH config, systemd units, sysctl/modprobe, `/usr/local/bin`, Podman configuration and Quadlets. |
 | Services | LLMNR/mDNS off, root Podman socket off, NFS client and `systemd-homed` off, core dumps disabled. |
+| Network | Incoming traffic filtered by the Proxmox firewall (see below). |
 | Passwords | `/etc/login.defs`: `PASS_MAX_DAYS 365`, `PASS_MIN_DAYS 1`, `PASS_MIN_LEN 12`, `UMASK 027`, YESCRYPT. |
 
 Lynis 3.1.7 hardening index: **83**. Remaining findings, accepted by design:
@@ -180,7 +187,36 @@ Lynis 3.1.7 hardening index: **83**. Remaining findings, accepted by design:
 | `BOOT-5264` service sandboxing | Distribution units, not modified |
 | `LOGG-2154`, `ACCT-9622/9626` | Remote logging and process accounting: optional |
 
-The template has no host firewall: filter at the network level.
+### Firewall (Proxmox)
+
+Filtering is done by the **Proxmox firewall**, outside the VM (a compromised VM cannot disable it); nothing is installed in FCOS. The rules of the template are copied to its clones.
+
+1. Keep the node itself unfiltered (or write its own rules first), then enable the firewall at datacenter level:
+   ```
+   # /etc/pve/nodes/<node>/host.fw
+   [OPTIONS]
+   enable: 0
+   # /etc/pve/firewall/cluster.fw
+   [OPTIONS]
+   enable: 1
+   ```
+2. Rules of the template (`/etc/pve/firewall/<template vmid>.fw`), adapt the source network and the published ports:
+   ```
+   [OPTIONS]
+   enable: 1
+   dhcp: 1
+   policy_in: DROP
+   policy_out: ACCEPT
+
+   [RULES]
+   IN ACCEPT -source 192.168.1.0/24 -p tcp -dport 59500 -log nolog # SSH from the LAN
+   IN ACCEPT -source 192.168.1.0/24 -p tcp -dport 3000 -log nolog # a published service
+   IN ACCEPT -p icmp -log nolog
+   IN ACCEPT -p ipv6-icmp -log nolog
+   ```
+3. Enable it on the network interface: `qm set <vmid> --net0 virtio=<mac>,bridge=<bridge>,firewall=1` (template and existing VMs).
+
+Outgoing traffic stays allowed (updates, image pulls, tunnels).
 
 ---
 

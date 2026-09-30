@@ -195,6 +195,12 @@ echo "clone ${TEST_VMID} created (cloud-init of ${REF_VMID}, $(ipconfig_of "${fi
 qm start ${TEST_VMID} 2>&1 | grep -E 'Fedora CoreOS|WARNING' || true
 EOF
 	"${PVE_SSH[@]}" "test -s ${COREOS_FILES_PATH}/${TEST_VMID}.ign" || die "ignition not generated"
+	# Proxmox firewall of the template inherited by the clone (when the template has one)
+	if "${PVE_SSH[@]}" "test -f /etc/pve/firewall/${TEMPLATE_VMID}.fw"; then
+		"${PVE_SSH[@]}" "test -f /etc/pve/firewall/${TEST_VMID}.fw && qm config ${TEST_VMID} | grep -q '^net0:.*firewall=1'" \
+			|| die "Proxmox firewall of the template not inherited by the clone"
+		echo "Proxmox firewall inherited from the template"
+	fi
 
 	step "boot 1 + 2 (packages, reboot)"
 	wait_vm_ssh
