@@ -1,0 +1,25 @@
+name: QA
+
+# Static checks that do not need the Proxmox node.
+# The end-to-end test (clone + boot + checks) runs from a workstation: qa/qa.sh all
+on:
+  push:
+  pull_request:
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: bash -n + shellcheck (all scripts)
+        run: qa/qa.sh static
+
+      - name: butane --strict (test header + fragment)
+        run: |
+          spec=$(sed -n 's/^BUTANE_SPEC_VERSION="\(.*\)"/\1/p' hook-fcos.sh)
+          grep -q "^version: ${spec}$" qa/header-test.yaml || { echo "qa/header-test.yaml version != BUTANE_SPEC_VERSION ${spec}"; exit 1; }
+          butane_ver=$(sed -n 's/^BUTANE_VERSION="\([^"]*\)".*/\1/p' hook-fcos.sh)
+          cat qa/header-test.yaml fcos-base-tmplt.yaml > test.bu
+          docker run --rm -v "$PWD":/work:z "quay.io/coreos/butane:v${butane_ver}" --strict --files-dir /work/scripts /work/test.bu > /tmp/test.ign
+          echo "butane v${butane_ver} spec ${spec}: OK ($(wc -c < /tmp/test.ign) bytes)"
